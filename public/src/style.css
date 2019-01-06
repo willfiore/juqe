@@ -1,0 +1,281 @@
+:root {
+    --searchBarHeight: 4rem;
+    --page-transition-options: 0.4s cubic-bezier(0.165, 0.840, 0.440, 1.000);
+    --app-max-width: 60rem;
+
+    --progressBarHeight: 0.4rem;
+    --progressBarPercentage: 0.4;
+
+    /* Colours */
+    --c1: rgb(255, 152, 56);
+    --c1-accent: rgb(255, 241, 225);
+
+    --c2: rgb(255, 80, 180);
+    --c2-accent: rgb(255, 232, 245);
+
+    --c3: rgb(80, 205, 255);
+    --c3-accent: rgb(210, 242, 255);
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    overflow: hidden;
+    position: fixed;
+    font-family: 'Ubuntu';
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#root {
+    width: 100%;
+    height: 100%;
+    max-width: var(--app-max-width);
+
+    overflow: hidden;
+}
+
+.mainPageContainer {
+    width: 100%;
+    height: calc(100% - var(--searchBarHeight));
+
+    display: flex;
+    flex-direction: column;
+    justify-content:space-between;
+    align-items: center;
+
+    transition: transform var(--page-transition-options);
+}
+
+.mainPageContainer.inactive {
+    transform: translateY(-5rem);
+    pointer-events: none;
+}
+
+.nowPlayingBar {
+    position: relative;
+    flex: none;
+    width: 100%;
+    box-shadow: 0px 0px 6px -0px rgba(0, 0, 0, 0.1);
+}
+
+.nowPlayingBarContent {
+    width: 100%;
+    height: 5rem;
+    display: flex;
+    align-items: center;
+    overflow:hidden;
+
+    background: linear-gradient(to right, rgba(255, 80, 180, 0.07) 0%,rgba(255, 185, 80, 0.07) 100%);
+}
+
+.nowPlayingBarContent .albumArt {
+    width: 5em;
+    height: 100%;
+    background-color: black;
+
+    flex: none;
+    background-image:url("assets/images/viva.jpg");
+    background-size:cover;
+}
+
+.nowPlayingBarContent .textGroup {
+    padding: 0 1.5rem;
+    flex: 1 1 auto;
+    overflow: hidden;
+    line-height: 1.4em;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.nowPlayingBarContent .textGroup div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.progressBar {
+    width: 100%;
+    height: var(--progressBarHeight);
+    background-color: var(--c2-accent);
+    transition: background-color var(--page-transition-options);
+}
+
+.progressBar .inner {
+    width: 100%;
+    height: 100%;
+    background-color: var(--c1);
+
+    transform: scaleX(var(--progressBarPercentage));
+    transform-origin: left;
+    transition:
+        background-color var(--page-transition-options),
+        transform 0.4s cubic-bezier(0.230, 1.000, 0.320, 1.000);
+}
+
+.mainPageContainer.inactive .progressBar {
+    background-color: var(--c3-accent);
+}
+
+.mainPageContainer.inactive .progressBar .inner {
+    background-color: var(--c3);
+}
+
+.queueTitle {
+    color: black;
+    margin: 0;
+    padding: 1.5rem;
+    font-size: 1rem;
+    font-weight: 100;
+
+    width: 100%;
+    flex: none;
+}
+
+.queueCardList {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-content: center;
+    overflow-y: scroll;
+
+    background-color: white;
+
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    width: 100%;
+
+    flex: 1 1 auto;
+}
+
+.songCard {
+    position: relative;
+    width: 100%;
+    height: 4.5em;
+    flex: none;
+
+    display: flex;
+    align-items: center;
+    justify-content:space-between;
+
+    overflow: hidden;
+}
+
+/* .queueCardList .songCard:after {
+    content:"";
+    display:block;
+    position:absolute;
+    bottom:0;
+    left: 0;
+    width:100%;
+    height:1px;
+    background-color: rgb(0, 0, 0, 0.05);
+} */
+
+.songCard .textGroup {
+    line-height: 1.4em;
+    overflow: hidden;
+    padding: 0 2.5rem 0 1.5rem;
+    font-size: 0.85em;
+}
+
+.songCard .textGroup div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.songCard .heartButton {
+    color: var(--c2);
+
+    width: 4.5rem;
+    height: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    flex: 0 0 auto;
+
+    font-size: 1.2rem;
+}
+
+.artistName {
+    color: rgb(110, 110, 110);
+}
+
+.queuePadding {
+    flex: none;
+    width: 100%;
+    height: 1em;
+}
+
+.searchPageContainer {
+    width: 100%;
+    height: 100%;
+    max-width: var(--app-max-width);
+    background-color: white;
+
+    position: absolute;
+    bottom: 0;
+
+    opacity: 1;
+
+    transform: translateY(calc(100% - var(--searchBarHeight)));
+    transition: transform var(--page-transition-options);
+}
+
+.searchPageContainer.active {
+    transform: translateY(var(--progressBarHeight));
+}
+
+.searchBar {
+    width: 100%;
+    height: var(--searchBarHeight);
+
+    position:relative;
+    display: flex;
+    align-items: center;
+    background-color: white;
+
+    box-shadow: 0px 0px 6px 0px rgba(0, 0, 0, 0.1);
+
+    z-index: 100;
+}
+
+.searchBar .icon {
+    color: black;
+    padding: 0 2rem;
+}
+
+.searchBar input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+}
+
+.searchBar input:focus {
+    outline: none;
+}
+
+.searchResultsCardList {
+    width:100%;
+    height:calc(100% - var(--searchBarHeight));
+
+    margin: 0;
+    padding: 0;
+
+    overflow-y: scroll;
+}

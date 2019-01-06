@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "private": true,
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "dev-server": "webpack-dev-server --content-base www/dist --inline --host 0.0.0.0",
-    "build": "webpack"
+    "start": "node .",
+    "dev-server": "webpack-dev-server --content-base public/dist --inline --host 0.0.0.0",
+    "build": "webpack",
+    "watch": "webpack --watch"
   },
   "author": "",
   "license": "ISC",
@@ -28,6 +30,8 @@
   },
   "dependencies": {
     "express": "^4.16.4",
+    "opn": "^5.4.0",
+    "request": "^2.88.0",
     "sanitize.css": "^8.0.0",
     "ws": "^6.1.2"
   }
