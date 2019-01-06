@@ -13,10 +13,11 @@ class NowPlayingBarContent extends React.Component {
     render() {
         return (
             <div className="nowPlayingBarContent">
-                <div className="albumArt"></div>
+                <div className="albumArt"
+                style={{backgroundImage: `url(${this.props.albumArt})`}}></div>
                 <div className="textGroup">
-                    <div className="songTitle">What's Up Danger (with Black Caviar)</div>
-                    <div className="artistName">Blackway, Black Caviar</div>
+                    <div className="songTitle">{this.props.songTitle}</div>
+                    <div className="artistName">{this.props.artistName}</div>
                 </div>
             </div>
         );
@@ -34,10 +35,39 @@ class ProgressBar extends React.Component {
 }
 
 class NowPlayingBar extends React.Component {
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            nowPlayingData: {
+                name: "",
+                artist: "",
+                album_art_uri: "",
+                duration_ms: 0,
+                progress_ms: 0
+            }
+        };
+
+        reactUpdateNowPlaying = (data) => {
+            this.setState({nowPlayingData: data});
+
+            globalState.trackProgressPercentage = data.progress_ms / data.duration_ms;
+
+            if (globalState.currentPage === "main") {
+                setCssVariable("progressBarPercentage", globalState.trackProgressPercentage);
+            }
+        }
+    }
+
     render() {
         return (
             <header className="nowPlayingBar">
-                <NowPlayingBarContent />
+                <NowPlayingBarContent
+                    songTitle={this.state.nowPlayingData.name}
+                    artistName={this.state.nowPlayingData.artist}
+                    albumArt={this.state.nowPlayingData.album_art_uri}
+                />
                 <ProgressBar />
             </header>
         );
@@ -229,7 +259,8 @@ class SearchDialog extends React.Component {
 
 // Global state mirror
 let globalState = {
-    currentPage: "main"
+    currentPage: "main",
+    trackProgressPercentage: 0.0
 }
 
 class App extends React.Component {
@@ -245,6 +276,7 @@ class App extends React.Component {
         if (this.state.page === page) return;
 
         if (page === "main") {
+            setCssVariable("progressBarPercentage", globalState.trackProgressPercentage);
         }
         else if (page === "search") {
             setCssVariable("progressBarPercentage", 1.0);
@@ -283,12 +315,17 @@ export function render() {
 
 // React callbacks
 let reactUpdateSearchResults;
+let reactUpdateNowPlaying;
 
 // Exports
 export function setSearchResults(data) {
     if (globalState.currentPage === "search") {
         reactUpdateSearchResults(data);
     }
+}
+
+export function setNowPlaying(data) {
+    reactUpdateNowPlaying(data);
 }
 
 // Export callbacks

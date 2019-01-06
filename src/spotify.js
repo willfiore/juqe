@@ -9,7 +9,7 @@ const CLIENT_SECRET = "ab1b3af243234d84b4f3bf6571febd04";
 const REDIRECT_URI = "http://localhost/auth/";
 let authenticated = false;
 
-let auth_data = {};
+let authData = {};
 
 // Refresh at this fraction of the expires_in value
 const EXPIRY_MULTIPLIER = 0.8;
@@ -26,10 +26,10 @@ function refreshAccessToken(refresh_token) {
         }
     }, (err, res, body) => {
         if (res.statusCode === 200) {
-            auth_data = Object.assign(auth_data, JSON.parse(body));
+            authData = Object.assign(authData, JSON.parse(body));
 
-            setTimeout(refreshAccessToken.bind(null, auth_data.refresh_token),
-                EXPIRY_MULTIPLIER * auth_data.expires_in * 1000);
+            setTimeout(refreshAccessToken.bind(null, authData.refresh_token),
+                EXPIRY_MULTIPLIER * authData.expires_in * 1000);
         }
     });
 }
@@ -41,7 +41,7 @@ exports.openAuthenticationWindow = () => {
         response_type: "code",
         redirect_uri: REDIRECT_URI,
         state: user_authentication_state,
-        scope: "user-read-private streaming",
+        scope: "user-read-playback-state user-read-private streaming",
         //show_dialog: "true"
     });
 
@@ -63,24 +63,25 @@ exports.authenticate = (code, state, callback) => {
             redirect_uri: REDIRECT_URI,
         }
     }, (err, res, body) => {
-        if (res.statusCode === 200) {
-            auth_data = JSON.parse(res.body);
-            setTimeout(refreshAccessToken.bind(null, auth_data.refresh_token),
-                EXPIRY_MULTIPLIER * auth_data.expires_in * 1000);
+        const success = res.statusCode === 200;
+        if (success) {
+            authData = JSON.parse(res.body);
+            setTimeout(refreshAccessToken.bind(null, authData.refresh_token),
+                EXPIRY_MULTIPLIER * authData.expires_in * 1000);
 
             console.log("Spotify authentication successful");
-            callback();
         } else {
             console.log("Error authenticating:");
             console.log(res.body);
         }
+        callback(success);
     });
 }
 
 exports.search = (query, callback) => {
     request.get("https://api.spotify.com/v1/search/", {
         headers: {
-            "Authorization": "Bearer " + auth_data.access_token
+            "Authorization": "Bearer " + authData.access_token
         },
         qs: {
             q: query + "*",
@@ -105,6 +106,56 @@ exports.search = (query, callback) => {
                 artist: rawData.tracks.items[i].artists.map(x => x.name).join(", "),
                 uri: rawData.tracks.items[i].uri,
             });
+        }
+
+        callback(data);
+    });
+}
+
+exports.hook = () => {
+    // Now playing data fetch
+    setInterval(() => {
+        fetchNowPlayingData((data) => {
+            nowPlayingData = data;
+            console.log(nowPlayingData);
+        });
+    }, 5000);
+}
+
+exports.nowPlaying = (callback) => {
+    request.get("https://api.spotify.com/v1/me/player/currently-playing/", {
+        headers: {
+            "Authorization": "Bearer " + authData.access_token
+        }
+    }, (err, res, body) => {
+
+        let data = {
+            name: "",
+            artist: "",
+            duration_ms: 0,
+            progress_ms: 0,
+            album_art_uri: ""
+        }
+
+        // Success
+        if (res.statusCode === 200) {
+            const rawData = JSON.parse(body);
+
+            data.name = rawData.item.name;
+            data.artist = rawData.item.artists.map(x => x.name).join(", ");
+            data.duration_ms = rawData.item.duration_ms;
+            data.progress_ms = rawData.progress_ms;
+            data.album_art_uri = rawData.item.album.images[0].url;
+        }
+        // No data (user probably doesn't have spotify running on any device)
+        else if (res.statusCode === 204) {
+            console.log("Can't get now playing info: user is not using spotify?");
+        }
+        // Failure
+        else {
+            console.log("Error getting now playing info:", err);
+            console.log("Status code:", res.statusCode);
+            console.log("Body:", body);
         }
 
         callback(data);

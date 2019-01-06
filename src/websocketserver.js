@@ -3,6 +3,8 @@ const wss = new WebSocket.Server({ port: 8080 });
 
 const spotify = require("./spotify.js");
 
+let messageHandlers = {};
+
 wss.on("connection", (ws) => {
 
     ws.sendRaw = ws.send.bind(ws);
@@ -30,13 +32,20 @@ wss.on("connection", (ws) => {
     });
 });
 
+exports.on = (key, callback) => {
+    messageHandlers[key] = callback;
+}
+
+exports.broadcast = (key, data) => {
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(key, data);
+        }
+    });
+}
+
 function handleMessage(ws, key, data) {
-    if (key === "search") {
-        spotify.search(data, (res)=> {
-            ws.send("search_results", {
-                query: data,
-                results: res
-            });
-        });
+    if (key in messageHandlers) {
+        messageHandlers[key](ws, data);
     }
 }

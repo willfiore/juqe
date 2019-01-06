@@ -11,3 +11,7 @@ UI.setSearchQueryCallback((query) => {
 WebSocket.on("search_results", (data) => {
     UI.setSearchResults(data);
 });
+
+WebSocket.on("now_playing", (data) => {
+    UI.setNowPlaying(data);
+});

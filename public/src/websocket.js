@@ -1,4 +1,5 @@
 let ws;
+let messageHandlers = {};
 
 export function send(key, data) {
     ws.send(key, data);
@@ -33,25 +34,14 @@ export function host() {
 
         handleMessage(key, data);
     }
+}
 
-    // let str = "search?strawberry swing?hehe";
-
-    // let key = str.substring(0, str.indexOf("?"));
-    // let data = str.substring(str.indexOf("?")+1);
-
-    // console.log(key);
-    // console.log(data);
+export function on(key, func) {
+    messageHandlers[key] = func;
 }
 
 function handleMessage(key, data) {
-    if (key in callbacks) {
-        callbacks[key](data);
+    if (key in messageHandlers) {
+        messageHandlers[key](data);
     }
-}
-
-// Callbacks
-let callbacks = {};
-
-export function on(key, func) {
-    callbacks[key] = func;
 }
