@@ -4,17 +4,22 @@ import "./style.css";
 import React from "react";
 import ReactDOM from "react-dom";
 
-function setCssVariable(name, value) {
-    let root = document.documentElement;
-    root.style.setProperty("--" + name, value);
+function setProgressBarPercentage(value) {
+    let progressbar = document.getElementById("progressBar");
+    progressbar.style.setProperty("--percentage", value);
 }
 
 class NowPlayingBarContent extends React.Component {
     render() {
+
         return (
             <div className="nowPlayingBarContent">
-                <div className="albumArt"
-                style={{backgroundImage: `url(${this.props.albumArt})`}}></div>
+                <img
+                    className="albumArt"
+                    src={this.props.albumArt}
+                    onLoad={(e) => {
+                    }}
+                />
                 <div className="textGroup">
                     <div className="songTitle">{this.props.songTitle}</div>
                     <div className="artistName">{this.props.artistName}</div>
@@ -27,7 +32,7 @@ class NowPlayingBarContent extends React.Component {
 class ProgressBar extends React.Component {
     render() {
         return (
-            <div className="progressBar">
+            <div className="progressBar" id="progressBar">
                 <div className="inner"></div>
             </div>
         );
@@ -55,7 +60,7 @@ class NowPlayingBar extends React.Component {
             globalState.trackProgressPercentage = data.progress_ms / data.duration_ms;
 
             if (globalState.currentPage === "main") {
-                setCssVariable("progressBarPercentage", globalState.trackProgressPercentage);
+                setProgressBarPercentage(globalState.trackProgressPercentage);
             }
         }
     }
@@ -83,23 +88,6 @@ class QueueCard extends React.Component {
                     <div className="artistName">{this.props.artist}</div>
                 </div>
                 <i className="heartButton far fa-heart"></i>
-            </li>
-        );
-    }
-}
-
-class SearchResultCard extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        return (
-            <li className="songCard">
-                <div className="textGroup">
-                    <div className="songTitle">{this.props.song}</div>
-                    <div className="artistName">{this.props.artist}</div>
-                </div>
             </li>
         );
     }
@@ -136,9 +124,17 @@ class SearchBar extends React.Component {
 
         this.handleChange = this.handleChange.bind(this);
         this.handleMouseDown = this.handleMouseDown.bind(this);
-        this.handleBlur = this.handleBlur.bind(this);
+        this.handleIconPress = this.handleIconPress.bind(this);
 
         this.focusTimer = {};
+    }
+
+    handleIconPress() {
+        if (this.props.isOpen) {
+            this.props.onBack();
+        } else {
+            this.props.onFocus();
+        }
     }
 
     handleMouseDown(e) {
@@ -151,23 +147,26 @@ class SearchBar extends React.Component {
         }, 400);
     }
 
-    handleBlur() {
-        clearTimeout(this.focusTimer);
-        this.props.onBlur();
-    }
-
     handleChange(e) {
         this.props.onSearchInputChange(e.target.value);
     }
 
     render() {
+
+        const iconClass = this.props.isOpen ?
+            "fas fa-chevron-left" :
+            "fas fa-search";
+
         return(
-            <div className="searchBar" onMouseDown={this.handleMouseDown}>
-                <i className="icon fas fa-search"></i>
+            <div className="searchBar">
+                <div className="icon" onMouseDown={this.handleIconPress}>
+                    <i className={iconClass}></i>
+                </div>
                 <input
                     id="search_input_field"
+                    onMouseDown={this.handleMouseDown}
                     type="text" value={this.props.searchInput} placeholder="Search for music"
-                    onChange={this.handleChange} onBlur={this.handleBlur}
+                    onChange={this.handleChange} 
                 ></input>
             </div>
         );
@@ -184,6 +183,31 @@ class SearchResults extends React.Component {
     }
 }
 
+class SearchResultCard extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.handleClick = this.handleClick.bind(this);
+    }
+
+    handleClick() {
+        cb("addToQueue", this.props.uri);
+    }
+
+    render() {
+        return (
+            <li className="songCard"
+            onMouseDown={this.handleClick}>
+                <div className="textGroup">
+                    <div className="songTitle">{this.props.song}</div>
+                    <div className="artistName">{this.props.artist}</div>
+                </div>
+            </li>
+        );
+    }
+}
+
+
 class SearchDialog extends React.Component {
     constructor(props) {
         super (props);
@@ -197,17 +221,14 @@ class SearchDialog extends React.Component {
         this.searchTimerDelay = 600;
 
         this.onSearchInputChange = this.onSearchInputChange.bind(this);
-        this.onBlur = this.onBlur.bind(this);
+        this.onBack = this.onBack.bind(this);
 
         reactUpdateSearchResults = (data) => {
             if (data.query != this.state.searchInput) return;
 
-            const results = data.results.map(x =>
-                <SearchResultCard song={x.name} artist={x.artist} key={x.uri} />
-            );
+            this.setState({searchResults: data.results});
 
-            this.setState({searchResults: results});
-            setCssVariable("progressBarPercentage", 1.0);
+            setProgressBarPercentage(1.0);
         }
     }
 
@@ -222,36 +243,47 @@ class SearchDialog extends React.Component {
         if (globalState.currentPage !== "search") return;
 
         if (hasText) {
-            setCssVariable("progressBarPercentage", 0.1);
+            setProgressBarPercentage(0.1);
 
             this.searchTimer = setTimeout(()=> {
                 if (globalState.currentPage === "search") {
-                    setCssVariable("progressBarPercentage", 0.65);
-                    cb_searchQuery(this.state.searchInput);
+                    setProgressBarPercentage(0.65);
+                    cb("searchQuery", this.state.searchInput);
                 }
             }, this.searchTimerDelay);
 
         } else {
-            setCssVariable("progressBarPercentage", 1.0);
+            setProgressBarPercentage(1.0);
         }
 
     }
 
-    onBlur() {
-        this.props.onBlur();
+    onBack() {
+        this.props.onBack();
         this.setState({searchInput: "", searchResults: []});
     }
 
     render() {
+
+        const results = this.state.searchResults.map(x =>
+            <SearchResultCard
+                song={x.name}
+                artist={x.artist}
+                key={x.uri}
+                uri={x.uri}
+            />
+        );
+
         return (
             <>
                 <SearchBar
+                    isOpen={this.props.isOpen}
                     onFocus={this.props.onFocus}
-                    onBlur={this.onBlur}
+                    onBack={this.onBack}
                     searchInput={this.state.searchInput}
                     onSearchInputChange={this.onSearchInputChange}
                 />
-                <SearchResults results={this.state.searchResults} />
+                <SearchResults results={results} />
             </>
         );
     }
@@ -276,10 +308,10 @@ class App extends React.Component {
         if (this.state.page === page) return;
 
         if (page === "main") {
-            setCssVariable("progressBarPercentage", globalState.trackProgressPercentage);
+            setProgressBarPercentage(globalState.trackProgressPercentage);
         }
         else if (page === "search") {
-            setCssVariable("progressBarPercentage", 1.0);
+            setProgressBarPercentage(1.0);
         }
         else {
             console.error("Invalid page", page);
@@ -300,8 +332,9 @@ class App extends React.Component {
 
                 <section className={"searchPageContainer" + (this.state.page === "search" ? " active" : "")}>
                     <SearchDialog
+                        isOpen={this.state.page === "search"}
                         onFocus={this.setPage.bind(this, "search")}
-                        onBlur={this.setPage.bind(this, "main")}
+                        onBack={this.setPage.bind(this, "main")}
                     />
                 </section>
                 </>
@@ -329,8 +362,16 @@ export function setNowPlaying(data) {
 }
 
 // Export callbacks
-let cb_searchQuery;
+let callbacks = {};
 
-export function setSearchQueryCallback(func) {
-    cb_searchQuery = func;
+function cb(key, ...args) {
+    if (key in callbacks) {
+        callbacks[key](...args);
+    } else {
+        console.error("Tried to use undefined callback", key);
+    }
+}
+
+export function setCallback(key, func) {
+    callbacks[key] = func;
 }

@@ -3,31 +3,47 @@ const web = require("./webserver.js");
 const wss = require("./websocketserver.js");
 
 // Webserver init
-web.setAuthCallback((res) => {
+web.setAuthCallback(async (res) => {
+
     if ("error" in res) {
         console.log("Authentication error:", res.error);
+        return;
     }
 
     if ("code" in res && "state" in res) {
-        spotify.authenticate(res.code, res.state, (success)=> {
-            if (success) {
 
-                setInterval(spotify.nowPlaying.bind(null, (data) => {
-                    wss.broadcast("now_playing", data);
-                }), 1000);
+        let success = await spotify.init(res.code, res.state);
+
+        if (!success) {
+            console.log("Failed to initialize spotify");
+            return;
+        }
+
+        setInterval(async () => {
+            let nowPlayingData = await spotify.nowPlaying();
+
+            if (nowPlayingData != null) {
+                wss.broadcast("now_playing", nowPlayingData);
             }
-        });
+        }, 1000);
     }
 });
 web.startListen();
 
-wss.on("search", (ws, data) => {
-    spotify.search(data, (res) => {
+wss.on("search", async (ws, query) => {
+
+    let searchResult = await spotify.search(query);
+
+    if (searchResult !== null) {
         ws.send("search_results", {
-            query: data,
-            results: res
+            query,
+            results: searchResult
         });
-    });
+    }
+});
+
+wss.on("addToQueue", (ws, uri) => {
+    console.log(uri);
 });
 
 spotify.openAuthenticationWindow();

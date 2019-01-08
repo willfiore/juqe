@@ -4,8 +4,12 @@ import * as UI from "./ui.js";
 WebSocket.host();
 UI.render();
 
-UI.setSearchQueryCallback((query) => {
+UI.setCallback("searchQuery", (query) => {
     WebSocket.send("search", query);
+});
+
+UI.setCallback("addToQueue", (uri) => {
+    WebSocket.send("addToQueue", uri);
 });
 
 WebSocket.on("search_results", (data) => {

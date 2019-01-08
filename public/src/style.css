@@ -3,8 +3,7 @@
     --page-transition-options: 0.4s cubic-bezier(0.165, 0.840, 0.440, 1.000);
     --app-max-width: 60rem;
 
-    --progressBarHeight: 0.4rem;
-    --progressBarPercentage: 0.4;
+    --progressBarHeight: 0.35rem;
 
     /* Colours */
     --c1: rgb(255, 152, 56);
@@ -19,6 +18,8 @@
 
 html {
     height: 100%;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 body {
@@ -103,6 +104,8 @@ body {
 }
 
 .progressBar {
+    --percentage: 0.4;
+
     width: 100%;
     height: var(--progressBarHeight);
     background-color: var(--c2-accent);
@@ -110,11 +113,12 @@ body {
 }
 
 .progressBar .inner {
+
     width: 100%;
     height: 100%;
     background-color: var(--c1);
 
-    transform: scaleX(var(--progressBarPercentage));
+    transform: scaleX(var(--percentage));
     transform-origin: left;
     transition:
         background-color var(--page-transition-options),
@@ -255,7 +259,12 @@ body {
 
 .searchBar .icon {
     color: black;
+    height: var(--searchBarHeight);
     padding: 0 2rem;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .searchBar input {

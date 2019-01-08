@@ -1,4 +1,4 @@
-const request = require("request");
+const request = require("./request-promise.js");
 const opn = require("opn");
 const querystring = require("querystring");
 const crypto = require("crypto");
@@ -7,31 +7,33 @@ const CLIENT_ID = "52d5d1608065415cb5f6775c6720e1bf";
 const CLIENT_SECRET = "ab1b3af243234d84b4f3bf6571febd04";
 
 const REDIRECT_URI = "http://localhost/auth/";
+const REALTIME_PLAYLIST_NAME = "spotibash-realtime";
 let authenticated = false;
 
 let authData = {};
+let realtimePlaylist = null;
 
 // Refresh at this fraction of the expires_in value
 const EXPIRY_MULTIPLIER = 0.8;
 
 const user_authentication_state = crypto.randomBytes(16).toString("hex");
 
-function refreshAccessToken(refresh_token) {
-    request.post("https://accounts.spotify.com/api/token/", {
+async function refreshAccessToken(refresh_token) {
+    let res = await request.post("https://accounts.spotify.com/api/token/", {
         form: {
             client_id: CLIENT_ID,
             client_secret: CLIENT_SECRET,
             grant_type: "refresh_token",
             refresh_token: refresh_token,
         }
-    }, (err, res, body) => {
-        if (res.statusCode === 200) {
-            authData = Object.assign(authData, JSON.parse(body));
-
-            setTimeout(refreshAccessToken.bind(null, authData.refresh_token),
-                EXPIRY_MULTIPLIER * authData.expires_in * 1000);
-        }
     });
+
+    if (res.statusCode !== 200) {
+        console.log("Error refreshing access token:", res.statusCode, res.body);
+        return null;
+    }
+
+    authData = Object.assign(authData, JSON.parse(res.body));
 }
 
 exports.openAuthenticationWindow = () => {
@@ -41,20 +43,21 @@ exports.openAuthenticationWindow = () => {
         response_type: "code",
         redirect_uri: REDIRECT_URI,
         state: user_authentication_state,
-        scope: "user-read-playback-state user-read-private streaming",
-        //show_dialog: "true"
+        scope: "playlist-modify-private playlist-read-private user-read-playback-state user-read-private streaming",
+        //show_dialog: "true",
     });
 
     opn(uri);
 }
 
-exports.authenticate = (code, state, callback) => {
+async function authenticate(code, state) {
+
     if (state != user_authentication_state) {
         console.error("Received invalid state for authentication");
-        return;
+        return null;
     }
 
-    request.post("https://accounts.spotify.com/api/token/", {
+    let res = await request.post("https://accounts.spotify.com/api/token/", {
         form: {
             client_id: CLIENT_ID,
             client_secret: CLIENT_SECRET,
@@ -62,24 +65,92 @@ exports.authenticate = (code, state, callback) => {
             code: code,
             redirect_uri: REDIRECT_URI,
         }
-    }, (err, res, body) => {
-        const success = res.statusCode === 200;
-        if (success) {
-            authData = JSON.parse(res.body);
-            setTimeout(refreshAccessToken.bind(null, authData.refresh_token),
-                EXPIRY_MULTIPLIER * authData.expires_in * 1000);
-
-            console.log("Spotify authentication successful");
-        } else {
-            console.log("Error authenticating:");
-            console.log(res.body);
-        }
-        callback(success);
     });
+
+    if (res.statusCode !== 200) {
+        console.log("Error authenticating:", res.statusCode, res.body);
+        return null;
+    }
+
+    authData = JSON.parse(res.body);
+    console.log("Spotify authentication successful");
+
+    setTimeout(function tick() {
+        refreshAccessToken(authData.refresh_token);
+        setTimeout(tick, EXPIRY_MULTIPLIER * authData.expires_in * 1000);
+    }, EXPIRY_MULTIPLIER * authData.expires_in * 1000);
+
+    return true;
 }
 
-exports.search = (query, callback) => {
-    request.get("https://api.spotify.com/v1/search/", {
+async function getRealtimePlaylist() {
+
+    let resGetPlaylists = await request.get("https://api.spotify.com/v1/me/playlists", {
+        headers: {
+            "Authorization": "Bearer " + authData.access_token
+        },
+        qs: {
+            limit: 50
+        },
+    });
+
+    const success = resGetPlaylists.statusCode === 200;
+
+    if (!success) {
+        console.log("Error retrieving user playlists", resGetPlaylists.body);
+        return null;
+    }
+
+    const playlistData = JSON.parse(resGetPlaylists.body);
+
+    // Search for existing spotify playlist
+    const playlist = playlistData.items.find(
+        x => x.name === REALTIME_PLAYLIST_NAME);
+
+    // Create it if it doesn't exist
+    if (playlist === undefined) {
+        const resCreatePlaylist = await request.post("https://api.spotify.com/v1/me/playlists", {
+            headers: {
+                "Authorization": "Bearer " + authData.access_token,
+                "Content-Type": "application/json"
+            },
+            json: {
+                name: REALTIME_PLAYLIST_NAME,
+                public: false,
+                description: "Auto-generated realtime playlist for SPOTIBASH app"
+            }
+        });
+
+        return resCreatePlaylist.body.uri;
+    } else {
+        return playlist.uri;
+    }
+}
+
+exports.init = async (code, state) => {
+    // NEED CALLBACK HERE
+
+    let success = await authenticate(code, state);
+
+    if (!success) {
+        console.log("Failed authentication");
+        return false;
+    }
+
+    let playlist = await getRealtimePlaylist();
+
+    if (playlist === null) {
+        console.log("Failed to get realtime playlist");
+        return false;
+    }
+
+    realtimePlaylist = playlist;
+
+    return true;
+}
+
+exports.search = async (query) => {
+    let res = await request.get("https://api.spotify.com/v1/search/", {
         headers: {
             "Authorization": "Bearer " + authData.access_token
         },
@@ -89,75 +160,55 @@ exports.search = (query, callback) => {
             market: "from_token",
             limit: 20,
         }
-    }, (err, res, body) => {
-
-        if (res.statusCode !== 200) {
-            console.log("error:", body);
-            return;
-        }
-
-        let rawData = JSON.parse(body);
-        let data = [];
-
-        for (let i = 0; i < rawData.tracks.items.length; i++) {
-
-            data.push({
-                name: rawData.tracks.items[i].name,
-                artist: rawData.tracks.items[i].artists.map(x => x.name).join(", "),
-                uri: rawData.tracks.items[i].uri,
-            });
-        }
-
-        callback(data);
     });
-}
 
-exports.hook = () => {
-    // Now playing data fetch
-    setInterval(() => {
-        fetchNowPlayingData((data) => {
-            nowPlayingData = data;
-            console.log(nowPlayingData);
+    if (res.statusCode !== 200) {
+        console.log("Search error:", res.statusCode, res.body);
+        return null;
+    }
+
+    let rawData = JSON.parse(res.body);
+    let returnData = [];
+
+    for (let i = 0; i < rawData.tracks.items.length; i++) {
+
+        returnData.push({
+            name: rawData.tracks.items[i].name,
+            artist: rawData.tracks.items[i].artists.map(x => x.name).join(", "),
+            uri: rawData.tracks.items[i].uri,
         });
-    }, 5000);
+    }
+
+    return returnData;
 }
 
-exports.nowPlaying = (callback) => {
-    request.get("https://api.spotify.com/v1/me/player/currently-playing/", {
+exports.nowPlaying = async () => {
+    let res = await request.get("https://api.spotify.com/v1/me/player/currently-playing/", {
         headers: {
             "Authorization": "Bearer " + authData.access_token
         }
-    }, (err, res, body) => {
-
-        let data = {
-            name: "",
-            artist: "",
-            duration_ms: 0,
-            progress_ms: 0,
-            album_art_uri: ""
-        }
-
-        // Success
-        if (res.statusCode === 200) {
-            const rawData = JSON.parse(body);
-
-            data.name = rawData.item.name;
-            data.artist = rawData.item.artists.map(x => x.name).join(", ");
-            data.duration_ms = rawData.item.duration_ms;
-            data.progress_ms = rawData.progress_ms;
-            data.album_art_uri = rawData.item.album.images[0].url;
-        }
-        // No data (user probably doesn't have spotify running on any device)
-        else if (res.statusCode === 204) {
-            console.log("Can't get now playing info: user is not using spotify?");
-        }
-        // Failure
-        else {
-            console.log("Error getting now playing info:", err);
-            console.log("Status code:", res.statusCode);
-            console.log("Body:", body);
-        }
-
-        callback(data);
     });
+
+    if (res.statusCode === 204) {
+        console.log("Error getting now playing info: user is not using spotify?");
+        return null;
+    }
+    else if (res.statusCode !== 200) {
+        console.log("Error getting now playing info:", res.statusCode, res.body);
+        return null;
+    }
+
+    const rawData = JSON.parse(res.body);
+
+    if (rawData.item !== null) {
+        let returnData = {}
+        returnData.name = rawData.item.name;
+        returnData.artist = rawData.item.artists.map(x => x.name).join(", ");
+        returnData.duration_ms = rawData.item.duration_ms;
+        returnData.progress_ms = rawData.progress_ms;
+        returnData.album_art_uri = rawData.item.album.images[0].url;
+        return returnData;
+    }
+
+    return null;
 }
