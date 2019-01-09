@@ -19,3 +19,7 @@ WebSocket.on("search_results", (data) => {
 WebSocket.on("now_playing", (data) => {
     UI.setNowPlaying(data);
 });
+
+WebSocket.on("queue", (queue) => {
+    UI.setQueue(queue);
+});

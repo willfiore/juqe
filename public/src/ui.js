@@ -94,23 +94,31 @@ class QueueCard extends React.Component {
 }
 
 class Queue extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            queue: []
+        }
+
+        reactUpdateQueue = (queue) => {
+            this.setState({queue});
+        }
+    }
+
     render() {
+
+        const queueCards = this.state.queue.map(x =>
+            <QueueCard
+                song={x.name}
+                artist={x.artist}
+                key={x.uri} />
+        );
+
         return (
             <>
                 <ul className="queueCardList">
-                    <QueueCard song="Every Teardrop Is a Waterfall" artist="Coldplay"/>
-                    <QueueCard song="POP/STARS" artist="K/DA, Madison Beer, (G)I-dle, Jaira Burns, League of Legends"/>
-                    <QueueCard song="Not Over Yet - Perfecto Edit" artist="Grace"/>
-                    <QueueCard song="Acceptable in the 80's" artist="Calvin Harris"/>
-                    <QueueCard song="Ready For The Floor" artist="Hot Chip"/>
-                    <QueueCard song="Cloud 9" artist="Fono, E^ST"/>
-                    <QueueCard song="Strawberry Swing" artist="Coldplay"/>
-                    <QueueCard song="One Kiss" artist="Calvin Harris, Dua Lipa"/>
-                    <QueueCard song="Ready For The Floor" artist="Hot Chip"/>
-                    <QueueCard song="Little Talks" artist="Of Monsters and Men"/>
-                    <QueueCard song="17 - 6am Remix" artist="MK, KC Lights"/>
-                    <QueueCard song="Without You (feat. Usher)" artist="David Guetta, Usher"/>
-                    <QueueCard song="Counting Stars" artist="OneRepublic"/>
+                    {queueCards}
                 </ul>
             </>
         );
@@ -129,22 +137,30 @@ class SearchBar extends React.Component {
         this.focusTimer = {};
     }
 
+    focus() {
+        const inputField = document.getElementById("search_input_field");
+
+        if (this.props.isOpen) {
+            inputField.focus();
+        } else {
+            this.props.onFocus();
+            this.focusTimer = setTimeout(() => {
+                inputField.focus();
+            }, 400);
+        }
+    }
+
     handleIconPress() {
         if (this.props.isOpen) {
             this.props.onBack();
         } else {
-            this.props.onFocus();
+            this.focus();
         }
     }
 
     handleMouseDown(e) {
         e.preventDefault();
-        this.props.onFocus();
-
-        this.focusTimer = setTimeout(()=>{
-            const inputField = document.getElementById("search_input_field");
-            inputField.focus();
-        }, 400);
+        this.focus();
     }
 
     handleChange(e) {
@@ -349,6 +365,7 @@ export function render() {
 // React callbacks
 let reactUpdateSearchResults;
 let reactUpdateNowPlaying;
+let reactUpdateQueue;
 
 // Exports
 export function setSearchResults(data) {
@@ -359,6 +376,10 @@ export function setSearchResults(data) {
 
 export function setNowPlaying(data) {
     reactUpdateNowPlaying(data);
+}
+
+export function setQueue(queue) {
+    reactUpdateQueue(queue);
 }
 
 // Export callbacks

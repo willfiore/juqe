@@ -4,6 +4,7 @@ const wss = new WebSocket.Server({ port: 8080 });
 const spotify = require("./spotify.js");
 
 let messageHandlers = {};
+let onConnect = ()=>{};
 
 wss.on("connection", (ws) => {
 
@@ -30,7 +31,13 @@ wss.on("connection", (ws) => {
 
         handleMessage(ws, key, data);
     });
+
+    onConnect(ws);
 });
+
+exports.onConnect = (callback) => {
+    onConnect = callback;
+}
 
 exports.on = (key, callback) => {
     messageHandlers[key] = callback;

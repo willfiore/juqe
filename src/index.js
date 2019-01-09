@@ -19,16 +19,23 @@ web.setAuthCallback(async (res) => {
             return;
         }
 
+        // Send nowplaying data to all clients periodically
         setInterval(async () => {
-            let nowPlayingData = await spotify.nowPlaying();
+            let nowPlayingData = await spotify.tick();
 
             if (nowPlayingData != null) {
                 wss.broadcast("now_playing", nowPlayingData);
             }
-        }, 1000);
+        }, 500);
     }
 });
 web.startListen();
+
+wss.onConnect((ws) => {
+    const queue = spotify.getQueue(10);
+
+    ws.send("queue", queue);
+});
 
 wss.on("search", async (ws, query) => {
 
@@ -43,7 +50,11 @@ wss.on("search", async (ws, query) => {
 });
 
 wss.on("addToQueue", (ws, uri) => {
-    console.log(uri);
+    spotify.addToQueue(uri);
 });
 
 spotify.openAuthenticationWindow();
+
+spotify.on("queue_changed", () => {
+    wss.broadcast("queue", spotify.getQueue(10));
+});
