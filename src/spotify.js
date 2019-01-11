@@ -42,7 +42,7 @@ function shiftQueue() {
         contextQueue.shift();
     }
 
-    exportCallbacks["queue_changed"]();
+    cb("queue_changed");
 }
 
 async function refreshAccessToken(refresh_token) {
@@ -97,13 +97,14 @@ async function authenticate(code, state) {
 }
 
 async function loadContextPlaylist(id) {
-    let res = await request.get(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
+
+    let res = await request.get(`https://api.spotify.com/v1/playlists/${id}`, {
         headers: {
             "Authorization": "Bearer " + authData.access_token
         },
         qs: {
-            fields: "items(track(name, uri, artists))"
-        },
+            fields: "name",
+        }
     });
 
     if (res.statusCode !== 200) {
@@ -111,16 +112,40 @@ async function loadContextPlaylist(id) {
         return false;
     }
 
-    const playlistItems = JSON.parse(res.body).items;
+    console.log(`Loading initial fallback playlist "${JSON.parse(res.body).name}"...`);
 
-    contextQueue = playlistItems.map(x => ({
-        name: x.track.name,
-        artist: x.track.artists.map(a => a.name).join(", "),
-        uri: x.track.uri,
-    }));
+    contextQueue.length = 0;
+    let api_str = `https://api.spotify.com/v1/playlists/${id}/tracks`;
+
+    while (api_str !== null) {
+        let res = await request.get(api_str, {
+            headers: {
+                "Authorization": "Bearer " + authData.access_token
+            },
+            qs: {
+                fields: "next,items(track(name, uri, artists))"
+            },
+        });
+
+        if (res.statusCode !== 200) {
+            console.log("Error loading playlist chunk:", res.statusCode, res.body);
+            return false;
+        }
+
+        let data = JSON.parse(res.body);
+
+        contextQueue = contextQueue.concat(data.items.map(x => ({
+            name: x.track.name,
+            artist: x.track.artists.map(a => a.name).join(", "),
+            uri: x.track.uri,
+        })));
+
+        api_str = data.next;
+    }
 
     utility.shuffleArray(contextQueue);
 
+    console.log(`Fallback playlist loaded.`);
     return true;
 }
 
@@ -131,7 +156,8 @@ async function getRealtimePlaylist() {
             "Authorization": "Bearer " + authData.access_token
         },
         qs: {
-            limit: 50
+            limit: 50,
+            market: "from_token",
         },
     });
 
@@ -150,6 +176,8 @@ async function getRealtimePlaylist() {
 
     // Create it if it doesn't exist
     if (playlist === undefined) {
+        console.log("Juqe realtime playlist doesn't exist... creating it...");
+
         const resCreatePlaylist = await request.post("https://api.spotify.com/v1/me/playlists", {
             headers: {
                 "Authorization": "Bearer " + authData.access_token,
@@ -164,6 +192,7 @@ async function getRealtimePlaylist() {
 
         return resCreatePlaylist.body.id;
     } else {
+        console.log("Found existing Juqe realtime playlist.");
         return playlist.id;
     }
 }
@@ -261,7 +290,8 @@ exports.init = async (code, state) => {
 
     // Load realtime and context playlists simultaneously
     let promiseRealtimePlaylist = getRealtimePlaylist();
-    let promiseSuccessContextPlaylistLoad = loadContextPlaylist("06TyJVYonMbbYjKzfZ3XYh");
+    let promiseSuccessContextPlaylistLoad = loadContextPlaylist("37i9dQZF1DWWQRwui0ExPn");
+    
     realtimePlaylistID = await promiseRealtimePlaylist;
     if (realtimePlaylistID === null) return false;
 
@@ -360,7 +390,7 @@ exports.addToQueue = async (uri) => {
         artist: trackData.artists.map(x => x.name).join(", "),
         uri: trackData.uri,
     });
-    exportCallbacks["queue_changed"]();
+    cb("queue_changed");
 
     // Push queue to spotify
     setRealtimePlaylistTracks([nextTrackInQueue().uri]);
@@ -379,4 +409,10 @@ exports.getQueue = function (limit = -1) {
 
 exports.on = function(key, callback) {
     exportCallbacks[key] = callback;
+}
+
+function cb(key, ...args) {
+    if (key in exportCallbacks) {
+        exportCallbacks[key](...args);
+    }
 }

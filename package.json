@@ -31,6 +31,7 @@
   "dependencies": {
     "express": "^4.16.4",
     "opn": "^5.4.0",
+    "react-flip-move": "^3.0.3",
     "request": "^2.88.0",
     "sanitize.css": "^8.0.0",
     "ws": "^6.1.2"

@@ -3,6 +3,17 @@ import "./style.css";
 
 import React from "react";
 import ReactDOM from "react-dom";
+import FlipMove from "react-flip-move";
+
+let exportCallbacks = {};
+
+// Global state mirror
+// Not sure if this is the best way of doing this
+// Maybe Redux ??
+let globalState = {
+    currentPage: "main",
+    trackProgressPercentage: 0.0
+}
 
 function setProgressBarPercentage(value) {
     let progressbar = document.getElementById("progressBar");
@@ -79,7 +90,31 @@ class NowPlayingBar extends React.Component {
     }
 }
 
+class FlipMovePresetList extends React.Component {
+    render() {
+        return (
+            <FlipMove typeName="ul" className={this.props.className}
+                duration="350"
+                easing="cubic-bezier(0.165, 0.840, 0.440, 1.000)"
+                enterAnimation="fade"
+                leaveAnimation="fade"
+                staggerDelayBy="20"
+            >
+                {this.props.children}
+            </FlipMove>
+        );
+    }
+}
+
 class QueueCard extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+
+    heartTrack() {
+        cb("heart", this.props.uri);
+    }
+
     render() {
         return (
             <li className="songCard">
@@ -87,7 +122,8 @@ class QueueCard extends React.Component {
                     <div className="songTitle">{this.props.song}</div>
                     <div className="artistName">{this.props.artist}</div>
                 </div>
-                <i className="heartButton far fa-heart"></i>
+                <i className={`heartButton fa${this.props.hearted ? "s" : "r"} fa-heart`}
+                onClick={this.heartTrack}></i>
             </li>
         );
     }
@@ -112,15 +148,22 @@ class Queue extends React.Component {
             <QueueCard
                 song={x.name}
                 artist={x.artist}
-                key={x.uri} />
+                key={x.uri}
+                uri={x.uri}
+                hearted={false}
+            />
         );
 
         return (
-            <>
-                <ul className="queueCardList">
-                    {queueCards}
-                </ul>
-            </>
+            <FlipMove typeName="ul" className="queueCardList"
+                duration="350"
+                easing="cubic-bezier(0.165, 0.840, 0.440, 1.000)"
+                enterAnimation="fade"
+                leaveAnimation="fade"
+                staggerDelayBy="20"
+            >
+                {queueCards}
+            </FlipMove>
         );
     }
 }
@@ -137,30 +180,28 @@ class SearchBar extends React.Component {
         this.focusTimer = {};
     }
 
-    focus() {
+    open() {
         const inputField = document.getElementById("search_input_field");
 
-        if (this.props.isOpen) {
+        this.props.onFocus();
+        this.focusTimer = setTimeout(() => {
             inputField.focus();
-        } else {
-            this.props.onFocus();
-            this.focusTimer = setTimeout(() => {
-                inputField.focus();
-            }, 400);
-        }
+        }, 400);
     }
 
     handleIconPress() {
         if (this.props.isOpen) {
             this.props.onBack();
         } else {
-            this.focus();
+            this.open();
         }
     }
 
     handleMouseDown(e) {
-        e.preventDefault();
-        this.focus();
+        if (!this.props.isOpen) {
+            e.preventDefault();
+            this.open();
+        }
     }
 
     handleChange(e) {
@@ -189,16 +230,6 @@ class SearchBar extends React.Component {
     }
 }
 
-class SearchResults extends React.Component {
-    render() {
-        return (
-            <ul className="searchResultsCardList">
-                {this.props.results}
-            </ul>
-        );
-    }
-}
-
 class SearchResultCard extends React.Component {
     constructor(props) {
         super(props);
@@ -222,7 +253,6 @@ class SearchResultCard extends React.Component {
         );
     }
 }
-
 
 class SearchDialog extends React.Component {
     constructor(props) {
@@ -299,16 +329,17 @@ class SearchDialog extends React.Component {
                     searchInput={this.state.searchInput}
                     onSearchInputChange={this.onSearchInputChange}
                 />
-                <SearchResults results={results} />
+                <FlipMove typeName="ul" className="searchResultsCardList"
+                    duration="700"
+                    easing="cubic-bezier(0.165, 0.840, 0.440, 1.000)"
+                    enterAnimation="fade"
+                    leaveAnimation="fade"
+                >
+                    {results}
+                </FlipMove>
             </>
         );
     }
-}
-
-// Global state mirror
-let globalState = {
-    currentPage: "main",
-    trackProgressPercentage: 0.0
 }
 
 class App extends React.Component {
@@ -367,7 +398,6 @@ let reactUpdateSearchResults;
 let reactUpdateNowPlaying;
 let reactUpdateQueue;
 
-// Exports
 export function setSearchResults(data) {
     if (globalState.currentPage === "search") {
         reactUpdateSearchResults(data);
@@ -383,16 +413,12 @@ export function setQueue(queue) {
 }
 
 // Export callbacks
-let callbacks = {};
-
 function cb(key, ...args) {
-    if (key in callbacks) {
-        callbacks[key](...args);
-    } else {
-        console.error("Tried to use undefined callback", key);
+    if (key in exportCallbacks) {
+        exportCallbacks[key](...args);
     }
 }
 
-export function setCallback(key, func) {
-    callbacks[key] = func;
+export function on(key, func) {
+    exportCallbacks[key] = func;
 }
