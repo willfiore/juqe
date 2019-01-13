@@ -13,8 +13,6 @@ const REDIRECT_URI = "http://localhost/auth/";
 const REALTIME_PLAYLIST_NAME = "04bf6f70ee7683db";
 const AUTH_STATE = crypto.randomBytes(16).toString("hex");
 
-const QUEUE_NUM_FALLBACK_TRACKS = 5;
-
 const global = {
     authenticated: false,
     authData: {},
@@ -103,14 +101,53 @@ module.exports.authenticate = async (code, state) => {
     global.authData = JSON.parse(res.body);
     c.success("Successfully authenticated with Spotify");
 
-    // setTimeout(function tick() {
-    //     refreshAccessToken(authData.refresh_token);
-    //     setTimeout(tick, EXPIRY_MULTIPLIER * authData.expires_in * 1000);
-    // }, EXPIRY_MULTIPLIER * authData.expires_in * 1000);
+    setTimeout(function tick() {
+        refreshAccessToken();
+        setTimeout(tick, 0.8 * global.authData.expires_in * 1000);
+    }, 0.8 * global.authData.expires_in * 1000);
 
     global.authenticated = true;
     return true;
 }
+
+async function refreshAccessToken() {
+    const res = await request({
+        uri: "https://accounts.spotify.com/api/token/",
+        method: "POST",
+        form: {
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            grant_type: "refresh_token",
+            refresh_token: global.authData.refresh_token
+        }
+    });
+
+    if (res.statusCode !== 200) {
+        c.error(`Error refreshing access token: ${res.statusCode}, ${res.body}`);
+        return null;
+    }
+
+    global.authData = Object.assign(global.authData, JSON.parse(res.body));
+}
+
+// async function refreshAccessToken(refresh_token) {
+//     let res = await request.post("https://accounts.spotify.com/api/token/", {
+//         form: {
+//             client_id: CLIENT_ID,
+//             client_secret: CLIENT_SECRET,
+//             grant_type: "refresh_token",
+//             refresh_token: refresh_token,
+//         }
+//     });
+// 
+//     if (res.statusCode !== 200) {
+//         console.log("Error refreshing access token:", res.statusCode, res.body);
+//         return null;
+//     }
+// 
+//     authData = Object.assign(authData, JSON.parse(res.body));
+// }
+// 
 
 async function getRealtimePlaylistID() {
     // Search user's playlists to see if realtime playlist already exists
@@ -394,24 +431,6 @@ module.exports.onQueueChanged = () => {};
 //     }
 // 
 //     cb("queue_changed");
-// }
-// 
-// async function refreshAccessToken(refresh_token) {
-//     let res = await request.post("https://accounts.spotify.com/api/token/", {
-//         form: {
-//             client_id: CLIENT_ID,
-//             client_secret: CLIENT_SECRET,
-//             grant_type: "refresh_token",
-//             refresh_token: refresh_token,
-//         }
-//     });
-// 
-//     if (res.statusCode !== 200) {
-//         console.log("Error refreshing access token:", res.statusCode, res.body);
-//         return null;
-//     }
-// 
-//     authData = Object.assign(authData, JSON.parse(res.body));
 // }
 // 
 // 
