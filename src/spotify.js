@@ -282,14 +282,23 @@ async function getNowPlayingInfo() {
     }
 
     const data = JSON.parse(res.body);
-    
-    return {
-        name: data.item.name,
-        artist: data.item.artists.map(a => a.name).join(", "),
-        uri: data.item.uri,
-        progress: (data.progress_ms / data.item.duration_ms),
-        album_art: data.item.album.images[0].url
-    };
+
+    let ret = {};
+
+    try {
+        ret = {
+            name: data.item.name,
+            artist: data.item.artists.map(a => a.name).join(", "),
+            uri: data.item.uri,
+            progress: (data.progress_ms / data.item.duration_ms),
+            album_art: data.item.album.images[0].url
+        }
+    } catch(e) {
+        console.log(e);
+        console.log(data);
+    }
+
+    return ret;
 }
 
 module.exports.init = async () => {

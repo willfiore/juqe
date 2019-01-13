@@ -2,7 +2,12 @@ export default class WebSocketClient {
     constructor(url) {
 
         this.messageHandlers = {};
-        this.ws = new WebSocket(url);
+        this.url = url;
+        this.connect();
+    }
+
+    connect() {
+        this.ws = new WebSocket(this.url);
 
         this.ws.sendRaw = this.ws.send.bind(this.ws);
         this.ws.send = (key, data) => {
@@ -24,6 +29,13 @@ export default class WebSocketClient {
             if (key in this.messageHandlers) {
                 this.messageHandlers[key](data);
             }
+        }
+
+        this.ws.onclose = (e) => {
+            console.log(`Websocket disconnected: ${e.reason}. Reconnecting...`);
+            setTimeout(() => {
+                this.connect();
+            }, 1000);
         }
     }
 

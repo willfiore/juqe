@@ -26,20 +26,23 @@ webServer.onAuth = async (code, state) => {
     if (!await Spotify.authenticate(code, state)) return;
     if (!await Spotify.init()) return;
 
+    webSocketServer.start();
+
     let oldUri = null;
     let spotifyTickTimer = setTimeout(async function tick() {
-        const s = await Spotify.tick();
-        if (!s) return;
+        const success = await Spotify.tick();
 
-        // On track change: tell clients about new track and queue
-        const nowPlaying = Spotify.nowPlaying();
-        if (oldUri !== nowPlaying.uri) {
-            webSocketServer.broadcast("nowPlayingTrack", nowPlaying);
-            oldUri === nowPlaying.uri;
-        }
-        // Track hasn't changed, just send progress bar update
-        else {
-            webSocketServer.broadcast("progress", data.nowPlaying.progress);
+        if (success) {
+            // On track change: tell clients about new track and queue
+            const nowPlaying = Spotify.nowPlaying();
+            if (oldUri !== nowPlaying.uri) {
+                webSocketServer.broadcast("nowPlayingTrack", nowPlaying);
+                oldUri === nowPlaying.uri;
+            }
+            // Track hasn't changed, just send progress bar update
+            else {
+                webSocketServer.broadcast("progress", data.nowPlaying.progress);
+            }
         }
 
         setTimeout(tick, SPOTIFY_TICK_TIMER);
