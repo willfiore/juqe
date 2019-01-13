@@ -1,9 +1,9 @@
 :root {
-    --searchBarHeight: 4rem;
+    --searchBarHeight: 4em;
     --page-transition-options: 0.4s cubic-bezier(0.165, 0.840, 0.440, 1.000);
     --app-max-width: 60rem;
 
-    --progressBarHeight: 0.35rem;
+    --progressBarHeight: 0.5rem;
 
     /* Colours */
     --c1: rgb(255, 152, 56);
@@ -43,21 +43,13 @@ body {
     overflow: hidden;
 }
 
-.mainPageContainer {
+.mainPage {
     width: 100%;
-    height: calc(100% - var(--searchBarHeight));
+    height: 100%;
 
     display: flex;
     flex-direction: column;
-    justify-content:space-between;
-    align-items: center;
-
-    transition: transform var(--page-transition-options);
-}
-
-.mainPageContainer.inactive {
-    transform: translateY(-5rem);
-    pointer-events: none;
+    justify-content:space-evenly;
 }
 
 .nowPlayingBar {
@@ -104,8 +96,6 @@ body {
 }
 
 .progressBar {
-    --percentage: 0.4;
-
     width: 100%;
     height: var(--progressBarHeight);
     background-color: var(--c2-accent);
@@ -118,19 +108,10 @@ body {
     height: 100%;
     background-color: var(--c1);
 
-    transform: scaleX(var(--percentage));
     transform-origin: left;
     transition:
         background-color var(--page-transition-options),
         transform 0.4s cubic-bezier(0.230, 1.000, 0.320, 1.000);
-}
-
-.mainPageContainer.inactive .progressBar {
-    background-color: var(--c3-accent);
-}
-
-.mainPageContainer.inactive .progressBar .inner {
-    background-color: var(--c3);
 }
 
 .queueTitle {
@@ -213,19 +194,13 @@ body {
     height: 1em;
 }
 
-.searchPageContainer {
+.searchPage {
     width: 100%;
     height: 100%;
     max-width: var(--app-max-width);
     background-color: white;
 
     position: absolute;
-    bottom: 0;
-
-    opacity: 1;
-
-    transform: translateY(calc(100% - var(--searchBarHeight)));
-    transition: transform var(--page-transition-options);
 }
 
 .searchPageContainer.active {
@@ -235,6 +210,8 @@ body {
 .searchBar {
     width: 100%;
     height: var(--searchBarHeight);
+
+    flex: none;
 
     position:relative;
     display: flex;
