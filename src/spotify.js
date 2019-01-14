@@ -13,6 +13,8 @@ const REDIRECT_URI = "http://localhost/auth/";
 const REALTIME_PLAYLIST_NAME = "04bf6f70ee7683db";
 const AUTH_STATE = crypto.randomBytes(16).toString("hex");
 
+const MIN_QUEUE_ITEMS = 12;
+
 const global = {
     authenticated: false,
     authData: {},
@@ -23,25 +25,25 @@ const global = {
     uriCache: {}
 };
 
-function shiftQueue() {
-    if (global.queue.length > 0) {
-        global.queue.shift();
-    }
-    else if (global.fallbackQueue.length > 0) {
-        global.fallbackQueue.shift();
-    }
+function fillQueue() {
+    if (global.queue.length >= MIN_QUEUE_ITEMS) return;
+
+    let numItems = MIN_QUEUE_ITEMS - global.queue.length;
+    const newItems = global.fallbackQueue.splice(0, numItems);
+
+    global.queue = global.queue.concat(newItems.map(x => ({
+        ...x,
+        ownerID: null,
+        hearts: []
+    })));
 }
 
-function nextTrackInQueue() {
-    if (global.queue.length > 0) {
-        return global.queue[0];
-    }
-    else if (global.fallbackQueue.length > 0) {
-        return global.fallbackQueue[0];
-    }
-    else {
-        return null;
-    }
+function reorderQueue() {
+    global.queue.sort((a, b) => {
+        if (a.hearts.length > b.hearts.length) return -1;
+        if (a.hearts.length < b.hearts.length) return 1;
+        return 0;
+    });
 }
 
 async function spotifyApi(uriStem, options) {
@@ -195,7 +197,7 @@ async function getRealtimePlaylistID() {
 }
 
 async function updateRealtimePlaylistTrack() {
-    const next = nextTrackInQueue();
+    const next = global.queue[0];
     if (next === null) {
         c.error("Can't set realtime playlist track: no songs in queue!");
         return false;
@@ -306,11 +308,13 @@ module.exports.init = async () => {
     global.realtimePlaylistID = await getRealtimePlaylistID();
     if (global.realtimePlaylistID === null) return false;
 
-    let fallbackPlaylistTracks = await getPlaylistTracks("06TyJVYonMbbYjKzfZ3XYh");
+    let fallbackPlaylistTracks = await getPlaylistTracks("37i9dQZEVXcDmnp4MUjGae");
     if (fallbackPlaylistTracks === null) return false;
 
     global.fallbackQueue = fallbackPlaylistTracks;
     util.shuffleArray(global.fallbackQueue);
+
+    fillQueue();
 
     await updateRealtimePlaylistTrack();
 
@@ -363,24 +367,29 @@ module.exports.search = async (query) => {
 
 module.exports.tick = async () => {
     const nowPlaying = await getNowPlayingInfo();
-    if (!nowPlaying) return false;
+    if (!nowPlaying) return null;
 
     // Track has changed
-    if (nowPlaying.uri !== global.nowPlaying.uri) {
-        const next = nextTrackInQueue();
+    const trackHasChanged = nowPlaying.uri !== global.nowPlaying.uri;
+    if (trackHasChanged) {
+        const next = global.queue[0];
 
         if (next !== null && next.uri === nowPlaying.uri) {
-            shiftQueue();
+            global.queue.shift();
+            fillQueue();
             updateRealtimePlaylistTrack();
             module.exports.onQueueChanged();
         }
     }
 
     global.nowPlaying = nowPlaying;
-    return true;
+
+    return {
+        trackHasChanged
+    };
 }
 
-module.exports.addToQueue = async (uri) => {
+module.exports.addToQueue = async (uri, ownerID = null) => {
     // Has track been cached from a previous search?
     // NOTE: Cache gets pretty big, maybe clear it every now and then?
     const track = global.uriCache[uri];
@@ -389,178 +398,55 @@ module.exports.addToQueue = async (uri) => {
         return false;
     }
 
-    global.queue.push(track);
-    updateRealtimePlaylistTrack();
-    module.exports.onQueueChanged();
+    global.queue.push({
+        ...track,
+        ownerID,
+        hearts: [ownerID]
+    });
+    reorderQueue();
+    onQueueChanged();
 
     return true;
+}
+
+module.exports.heartTrack = (uri, clientID) => {
+    const track = global.queue.find(track => track.uri === uri);
+
+    if (track !== undefined) {
+        if (track.hearts.indexOf(clientID) === -1) {
+            track.hearts.push(clientID);
+        } else {
+            track.hearts = track.hearts.filter(id => id != clientID);
+        }
+    }
+    reorderQueue();
+    onQueueChanged();
+}
+
+module.exports.removeTrack = (uri, clientID) => {
+    const trackIndex = global.queue.findIndex(track => track.uri === uri);
+    if (trackIndex === -1) return;
+
+    const track = global.queue[trackIndex];
+
+    if (track.ownerID === clientID) {
+        global.queue.splice(trackIndex, 1);
+    }
+
+    onQueueChanged();
 }
 
 module.exports.nowPlaying = () => {
     return global.nowPlaying;
 }
 
-module.exports.queue = (limit) => {
-    return global.queue.concat(global.fallbackQueue).slice(0, limit);
+module.exports.queue = () => {
+    return global.queue;
+}
+
+function onQueueChanged() {
+    updateRealtimePlaylistTrack();
+    module.exports.onQueueChanged();
 }
 
 module.exports.onQueueChanged = () => {};
-
-// let authenticated = false;
-// 
-// let authData = {};
-// let realtimePlaylistID = null;
-// 
-// let playQueue = [];
-// let contextQueue = [];
-// 
-// let exportCallbacks = {};
-// 
-// // Refresh at this fraction of the expires_in value
-// const EXPIRY_MULTIPLIER = 0.8;
-// 
-// const user_authentication_state = crypto.randomBytes(16).toString("hex");
-// 
-// function nextTrackInQueue() {
-//     if (playQueue.length !== 0) {
-//         return playQueue[0];
-//     }
-//     else if (contextQueue.length !== 0) {
-//         return contextQueue[0];
-//     }
-//     return null;
-// }
-// 
-// function shiftQueue() {
-//     if (playQueue.length !== 0) {
-//         playQueue.shift();
-//     }
-//     else if (contextQueue.length !== 0) {
-//         contextQueue.shift();
-//     }
-// 
-//     cb("queue_changed");
-// }
-// 
-// 
-// 
-// 
-// async function getNowPlaying() {
-//     let res = await request.get("https://api.spotify.com/v1/me/player/currently-playing/", {
-//         headers: {
-//             "Authorization": "Bearer " + authData.access_token
-//         }
-//     });
-// 
-//     if (res.statusCode === 204) {
-//         console.log("Error getting now playing info: user is not using spotify?");
-//         return null;
-//     }
-//     else if (res.statusCode !== 200) {
-//         console.log("Error getting now playing info:", res.statusCode, res.body);
-//         return null;
-//     }
-// 
-//     const rawData = JSON.parse(res.body);
-// 
-//     if (rawData.item !== null) {
-//         let returnData = {}
-//         returnData.name = rawData.item.name;
-//         returnData.artist = rawData.item.artists.map(x => x.name).join(", ");
-//         returnData.duration_ms = rawData.item.duration_ms;
-//         returnData.progress_ms = rawData.progress_ms;
-//         returnData.album_art_uri = rawData.item.album.images[0].url;
-//         returnData.uri = rawData.item.uri;
-//         return returnData;
-//     }
-// 
-//     return null;
-// }
-// 
-// 
-// // Unused due to Spotify API bug
-// async function playPlaylistContext(id) {
-//     let res = await request.put("https://api.spotify.com/v1/me/player/play", {
-//         headers: {
-//             "Authorization": "Bearer " + authData.access_token,
-//         },
-//         json: {
-//             context_uri: "spotify:playlist:" + id
-//         }
-//     });
-// 
-//     if (res.statusCode !== 204) {
-//         console.log("Failed to play playlist:", res.statusCode, res.body);
-//         return false;
-//     }
-//     return true;
-// }
-// 
-// 
-// 
-// 
-// exports.tick = async () => {
-//     let nowPlaying = await getNowPlaying();
-//     if (nowPlaying === null) return;
-// 
-//     // Update spotify realtime playlist when song changes
-//     if (nowPlaying.uri === nextTrackInQueue().uri) {
-//         shiftQueue();
-//         setRealtimePlaylistTracks([nextTrackInQueue().uri]);
-//     }
-// 
-//     return nowPlaying;
-// }
-// 
-// exports.addToQueue = async (uri) => {
-// 
-//     const id = uri.split(":").pop();
-// 
-//     // Get track data from uri
-//     const res = await request.get(`https://api.spotify.com/v1/tracks/${id}`, {
-//         headers: {
-//             "Authorization": "Bearer " + authData.access_token
-//         },
-//         qs: {
-//             market: "GB"
-//         }
-//     });
-// 
-//     if (res.statusCode !== 200) {
-//         console.log("Failed to get track:", res.statusCode, res.body);
-//         return false;
-//     }
-// 
-//     const trackData = JSON.parse(res.body);
-// 
-//     playQueue.push({
-//         name: trackData.name,
-//         artist: trackData.artists.map(x => x.name).join(", "),
-//         uri: trackData.uri,
-//     });
-//     cb("queue_changed");
-// 
-//     // Push queue to spotify
-//     setRealtimePlaylistTracks([nextTrackInQueue().uri]);
-// 
-//     return true;
-// }
-// 
-// exports.getQueue = function (limit = -1) {
-// 
-//     if (limit <= 0) {
-//         return playQueue.concat(contextQueue);
-//     } else {
-//         return playQueue.concat(contextQueue).slice(0, limit);
-//     }
-// }
-// 
-// exports.on = function(key, callback) {
-//     exportCallbacks[key] = callback;
-// }
-// 
-// function cb(key, ...args) {
-//     if (key in exportCallbacks) {
-//         exportCallbacks[key](...args);
-//     }
-// }

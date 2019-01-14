@@ -27,7 +27,7 @@ export default class App extends React.Component {
         this.webSocketClient.onOpen = () => {
             // Check for stored UUID- send that to the server if so
             const uuid = localStorage.getItem("uuid");
-            this.webSocketClient.send("uuid", uuid);
+            this.webSocketClient.send("login", uuid);
         }
 
         this.webSocketClient.onMessage("uuid", (uuid) => {
@@ -50,8 +50,11 @@ export default class App extends React.Component {
             this.setState({ lastSearchResults: results });
         });
 
-        this.webSocketClient.onMessage("loginSuccess", (name) => {
-            this.setState({page: "main"});
+        this.webSocketClient.onMessage("loginSuccess", (myUserID) => {
+            this.setState({
+                page: "main",
+                myUserID
+            });
         });
 
         this.state = {
@@ -63,12 +66,15 @@ export default class App extends React.Component {
                 items: []
             },
             loginName: "",
+            myUserID: null
         }
 
         this.setPage = this.setPage.bind(this);
         this.search = this.search.bind(this);
         this.addToQueue = this.addToQueue.bind(this);
         this.sendName = this.sendName.bind(this);
+        this.heartTrack = this.heartTrack.bind(this);
+        this.removeTrack = this.removeTrack.bind(this);
 
         this.currentSearchInput = "";
     }
@@ -90,12 +96,23 @@ export default class App extends React.Component {
         this.webSocketClient.send("name", this.state.loginName);
     }
 
+    heartTrack(uri) {
+        this.webSocketClient.send("heart", uri);
+    }
+
+    removeTrack(uri) {
+        this.webSocketClient.send("remove", uri);
+    }
+
     render() {
         if (this.state.page === "main") {
             return <MainPage
                 onSearchBarClick={this.setPage.bind(null, "search")}
                 nowPlaying={this.state.nowPlaying}
                 queue={this.state.queue}
+                myUserID={this.state.myUserID}
+                onPressHeartButton={this.heartTrack}
+                onPressRemoveButton={this.removeTrack}
             />
         }
         else if (this.state.page === "search") {

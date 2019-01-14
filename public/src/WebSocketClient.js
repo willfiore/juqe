@@ -18,6 +18,7 @@ export default class WebSocketClient {
         }
 
         this.ws.onmessage = (e) => {
+
             let key, data;
 
             try {
@@ -28,6 +29,8 @@ export default class WebSocketClient {
                 console.error(err);
                 return;
             }
+
+            console.log(key);
 
             if (key in this.messageHandlers) {
                 this.messageHandlers[key](data);

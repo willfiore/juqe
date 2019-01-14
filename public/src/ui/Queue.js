@@ -2,7 +2,9 @@ import React from "react";
 import FlipMove from "react-flip-move";
 import QueueCard from "./QueueCard";
 
-export default function Queue(props) {
+export default React.memo(function Queue(props) {
+
+    console.log(props.items);
 
     const queueCards = props.items.map(t =>
         <QueueCard
@@ -10,7 +12,10 @@ export default function Queue(props) {
             artist={t.artist}
             key={t.uri}
             uri={t.uri}
-            hearted={false}
+            isMine={props.myUserID === t.ownerID}
+            hearted={t.hearts.indexOf(props.myUserID) !== -1}
+            onPressHeartButton={props.onPressHeartButton}
+            onPressRemoveButton={props.onPressRemoveButton}
         />
     );
 
@@ -25,4 +30,4 @@ export default function Queue(props) {
             {queueCards}
         </FlipMove>
     );
-}
+});

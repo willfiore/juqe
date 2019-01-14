@@ -8,13 +8,13 @@ const webServer = new WebServer(80);
 const webSocketServer = new WebSocketServer();
 
 const SPOTIFY_TICK_TIMER = 200;
-const SPOTIFY_QUEUE_SEND_SIZE = 15;
 
 const registeredUsers = {};
+let nextUserID = 0;
 
-function getClientName(client) {
+function getUserDetails(client) {
     if (client.uuid in registeredUsers) {
-        return registeredUsers[client.uuid].name;
+        return registeredUsers[client.uuid];
     }
     return null;
 }
@@ -23,22 +23,25 @@ function isClientRegistered(client) {
     return client.uuid in registeredUsers;
 }
 
-webSocketServer.onOpen = (client) => {
+function onLoginSuccess(client) {
+    const details = getUserDetails(client);
+    client.send("loginSuccess", details.id);
     client.send("nowPlayingTrack", Spotify.nowPlaying());
-    client.send("queue", Spotify.queue(SPOTIFY_QUEUE_SEND_SIZE));
+    client.send("queue", Spotify.queue());
 }
 
-webSocketServer.onMessage("uuid", (client, uuid) => {
+webSocketServer.onMessage("login", (client, providedUUID) => {
     // Generate UUID if client doesn't provide a valid one
-    if (uuid === null || !(uuid in registeredUsers)) {
+    if (providedUUID === null || !(providedUUID in registeredUsers)) {
         client.uuid = uuidv4();
         client.send("uuid", client.uuid);
     } else {
-        client.uuid = uuid;
+        client.uuid = providedUUID;
 
-        const name = registeredUsers[client.uuid].name;
-        c.info(`${name} reconnected`);
-        client.send("loginSuccess", name);
+        const user = registeredUsers[client.uuid];
+        c.info(`${user.name} reconnected`);
+
+        onLoginSuccess(client);
     }
 });
 
@@ -55,9 +58,13 @@ webSocketServer.onMessage("name", (client, name) => {
     const user = registeredUsers[client.uuid];
 
     if (user === undefined) {
-        registeredUsers[client.uuid] = { name };
+        registeredUsers[client.uuid] = {
+            id: nextUserID++,
+            name
+        };
+
         c.info(`${name} connected`);
-        client.send("loginSuccess", name);
+        onLoginSuccess(client);
     }
     // Uncomment to enable renaming
     // else {
@@ -75,7 +82,15 @@ webSocketServer.onMessage("search", async (client, query) => {
 
 webSocketServer.onMessage("addToQueue", async (client, uri) => {
     if (!isClientRegistered(client)) return;
-    Spotify.addToQueue(uri);
+    Spotify.addToQueue(uri, getUserDetails(client).id);
+});
+
+webSocketServer.onMessage("heart", async (client, uri) => {
+    Spotify.heartTrack(uri, getUserDetails(client).id);
+});
+
+webSocketServer.onMessage("remove", async (client, uri) => {
+    Spotify.removeTrack(uri, getUserDetails(client).id);
 });
 
 webServer.onAuth = async (code, state) => {
@@ -84,20 +99,19 @@ webServer.onAuth = async (code, state) => {
 
     webSocketServer.start();
 
-    let oldUri = null;
     let spotifyTickTimer = setTimeout(async function tick() {
-        const success = await Spotify.tick();
+        const tickData = await Spotify.tick();
+        const success = (tickData !== null);
 
         if (success) {
             // On track change: tell clients about new track and queue
             const nowPlaying = Spotify.nowPlaying();
-            if (oldUri !== nowPlaying.uri) {
+            if (tickData.trackHasChanged) {
                 webSocketServer.broadcast("nowPlayingTrack", nowPlaying);
-                oldUri === nowPlaying.uri;
             }
             // Track hasn't changed, just send progress bar update
             else {
-                webSocketServer.broadcast("progress", data.nowPlaying.progress);
+                webSocketServer.broadcast("progress", nowPlaying.progress);
             }
         }
 
@@ -106,7 +120,7 @@ webServer.onAuth = async (code, state) => {
 }
 
 Spotify.onQueueChanged = () => {
-    webSocketServer.broadcast("queue", Spotify.queue(SPOTIFY_QUEUE_SEND_SIZE));
+    webSocketServer.broadcast("queue", Spotify.queue());
 }
 
 Spotify.openAuthenticationWindow();

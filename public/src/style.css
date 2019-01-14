@@ -26,6 +26,7 @@ body {
     overflow: hidden;
     position: fixed;
     font-family: 'Ubuntu';
+    font-weight: 300;
 
     width: 100%;
     height: 100%;
@@ -69,6 +70,8 @@ input:focus {
     flex: none;
     width: 100%;
     box-shadow: 0px 0px 6px -0px rgba(0, 0, 0, 0.1);
+
+    font-weight: 400;
 }
 
 .nowPlayingBarContent {
@@ -170,8 +173,8 @@ input:focus {
 
 .songCard .textGroup {
     line-height: 1.4em;
+    padding: 0 1.5rem;
     overflow: hidden;
-    padding: 0 2.5rem 0 1.5rem;
     font-size: 0.85em;
 }
 
@@ -181,9 +184,7 @@ input:focus {
     text-overflow: ellipsis;
 }
 
-.songCard .heartButton {
-    color: var(--c2);
-
+.songCard .button {
     width: 4.5rem;
     height: 100%;
 
@@ -194,6 +195,14 @@ input:focus {
     flex: 0 0 auto;
 
     font-size: 1.2rem;
+}
+
+.songCard .heartButton {
+    color: rgb(255, 125, 147);
+}
+
+.songCard .removeButton {
+    color: rgb(204, 0, 0);
 }
 
 .artistName {
