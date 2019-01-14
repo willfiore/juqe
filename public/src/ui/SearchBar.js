@@ -31,6 +31,7 @@ export default class SearchBar extends React.Component {
                 </div>
                 <input
                     id="search_input_field" type="text" value={this.props.value}
+                    spellCheck="false"
                     placeholder="Search for music" autoFocus={this.props.active}
                     onMouseDown={this.onInputMouseDown} onChange={this.onInputChange}
                 ></input>

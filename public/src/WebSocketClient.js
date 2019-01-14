@@ -13,6 +13,9 @@ export default class WebSocketClient {
         this.ws.send = (key, data) => {
             this.ws.sendRaw(JSON.stringify({ key, data }));
         }
+        this.ws.onopen = (e) => {
+            this.onOpen();
+        }
 
         this.ws.onmessage = (e) => {
             let key, data;
@@ -38,6 +41,8 @@ export default class WebSocketClient {
             }, 1000);
         }
     }
+
+    onOpen() {}
 
     onMessage(key, callback) {
         this.messageHandlers[key] = callback;

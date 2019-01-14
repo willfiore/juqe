@@ -37,7 +37,7 @@ export default class SearchPage extends React.Component {
         }
 
         return (
-            <div className="searchPage">
+            <div className="page searchPage">
                 <SearchBar active={true}
                     value={this.state.searchQuery}
                     onInputChange={this.setSearchQuery}

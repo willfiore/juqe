@@ -6,7 +6,7 @@ import Queue from "./Queue";
 
 export default function MainPage(props) {
     return (
-        <div className="mainPage">
+        <div className="page mainPage">
             <NowPlayingBar nowPlaying={props.nowPlaying} />
             <Queue items={props.queue}/>
             <SearchBar active={false} onClick={props.onSearchBarClick} />

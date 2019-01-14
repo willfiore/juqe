@@ -1,5 +1,6 @@
 import React from "react";
 
+import LoginPage from "./ui/LoginPage";
 import MainPage from "./ui/MainPage";
 import SearchPage from "./ui/SearchPage";
 
@@ -23,6 +24,17 @@ export default class App extends React.Component {
             }));
         });
 
+        this.webSocketClient.onOpen = () => {
+            // Check for stored UUID- send that to the server if so
+            const uuid = localStorage.getItem("uuid");
+            this.webSocketClient.send("uuid", uuid);
+        }
+
+        this.webSocketClient.onMessage("uuid", (uuid) => {
+            this.setState({page: "login"});
+            localStorage.setItem("uuid", uuid);
+        });
+
         this.webSocketClient.onMessage("nowPlayingTrack", (nowPlaying) => {
             this.setState({ nowPlaying });
         });
@@ -38,19 +50,25 @@ export default class App extends React.Component {
             this.setState({ lastSearchResults: results });
         });
 
+        this.webSocketClient.onMessage("loginSuccess", (name) => {
+            this.setState({page: "main"});
+        });
+
         this.state = {
-            page: "main",
+            page: "blank",
             nowPlaying: {},
             queue: [],
             lastSearchResults: {
                 query: "",
                 items: []
             },
+            loginName: "",
         }
 
         this.setPage = this.setPage.bind(this);
         this.search = this.search.bind(this);
         this.addToQueue = this.addToQueue.bind(this);
+        this.sendName = this.sendName.bind(this);
 
         this.currentSearchInput = "";
     }
@@ -68,6 +86,10 @@ export default class App extends React.Component {
         this.setPage("main");
     }
 
+    sendName() {
+        this.webSocketClient.send("name", this.state.loginName);
+    }
+
     render() {
         if (this.state.page === "main") {
             return <MainPage
@@ -83,6 +105,15 @@ export default class App extends React.Component {
                 onSearchInputChanged={(q) => { this.currentSearchInput = q; }}
                 onClickSearchResult={this.addToQueue}
                 searchResults={this.state.lastSearchResults} />
+        }
+        else if (this.state.page === "login") {
+            return <LoginPage
+                loginName={this.state.loginName}
+                onNameFieldChanged={(loginName) => { this.setState({loginName})}}
+                onSubmit={this.sendName} />
+        }
+        else if (this.state.page === "blank") {
+            return null;
         }
     }
 }

@@ -35,6 +35,11 @@ body {
     align-items: center;
 }
 
+/* Disable Chrome mobile input outlining */
+input:focus {
+    outline: none;
+}
+
 #root {
     width: 100%;
     height: 100%;
@@ -43,10 +48,17 @@ body {
     overflow: hidden;
 }
 
-.mainPage {
+.page {
     width: 100%;
     height: 100%;
 
+    max-width: var(--app-max-width);
+    background-color: white;
+
+    position: absolute;
+}
+
+.mainPage {
     display: flex;
     flex-direction: column;
     justify-content:space-evenly;
@@ -194,19 +206,6 @@ body {
     height: 1em;
 }
 
-.searchPage {
-    width: 100%;
-    height: 100%;
-    max-width: var(--app-max-width);
-    background-color: white;
-
-    position: absolute;
-}
-
-.searchPageContainer.active {
-    transform: translateY(var(--progressBarHeight));
-}
-
 .searchBar {
     width: 100%;
     height: var(--searchBarHeight);
@@ -240,10 +239,6 @@ body {
     background: transparent;
 }
 
-.searchBar input:focus {
-    outline: none;
-}
-
 .searchResultsCardList {
     width:100%;
     height:calc(100% - var(--searchBarHeight));
@@ -252,4 +247,36 @@ body {
     padding: 0;
 
     overflow-y: scroll;
+}
+
+.loginPage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    background: linear-gradient(to top, rgb(255, 80, 103) 0%,rgb(255, 170, 58) 100%);
+}
+
+.loginPage .formContainer {
+    width: 100%;
+    padding: 4rem;
+}
+
+.loginPage h1 {
+
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: white;
+    text-shadow: 0px 2px 10px rgb(0, 0, 0, 0.1);
+}
+
+.loginPage input {
+    border: none;
+    font-size: 1.4rem;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 0;
+    width: 100%;
+
+    box-shadow: 0px 0px 6px 0px rgba(0, 0, 0, 0.1);
 }
