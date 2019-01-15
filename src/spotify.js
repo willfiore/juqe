@@ -20,28 +20,42 @@ const global = {
     authData: {},
     nowPlaying: {},
     realtimePlaylistID: null,
-    queue: [],
+    userQueue: [],
     fallbackQueue: [],
     uriCache: {}
 };
 
-function fillQueue() {
-    if (global.queue.length >= MIN_QUEUE_ITEMS) return;
+function nextTrackInQueue() {
+    if (global.userQueue.length > 0) {
+        return global.userQueue[0];
+    }
 
-    let numItems = MIN_QUEUE_ITEMS - global.queue.length;
-    const newItems = global.fallbackQueue.splice(0, numItems);
+    if (global.fallbackQueue.length > 0) {
+        return global.fallbackQueue[0];
+    }
 
-    global.queue = global.queue.concat(newItems.map(x => ({
-        ...x,
-        ownerID: null,
-        hearts: []
-    })));
+    return null;
+}
+
+function shiftQueue() {
+    if (global.userQueue.length > 0) {
+        return global.userQueue.shift();
+    }
+    else if (global.fallbackQueue.length > 0) {
+        return global.fallbackQueue.shift();
+    }
+
+    return null;
 }
 
 function reorderQueue() {
-    global.queue.sort((a, b) => {
+    global.userQueue.sort((a, b) => {
         if (a.hearts.length > b.hearts.length) return -1;
         if (a.hearts.length < b.hearts.length) return 1;
+
+        if (a.timestamp < b.timestamp) return -1;
+        if (a.timestamp > b.timestamp) return 1;
+
         return 0;
     });
 }
@@ -197,7 +211,9 @@ async function getRealtimePlaylistID() {
 }
 
 async function updateRealtimePlaylistTrack() {
-    const next = global.queue[0];
+
+    const next = nextTrackInQueue();
+
     if (next === null) {
         c.error("Can't set realtime playlist track: no songs in queue!");
         return false;
@@ -314,8 +330,6 @@ module.exports.init = async () => {
     global.fallbackQueue = fallbackPlaylistTracks;
     util.shuffleArray(global.fallbackQueue);
 
-    fillQueue();
-
     await updateRealtimePlaylistTrack();
 
     // NOTE: For now, don't start the playlist automatically. Playback started
@@ -372,13 +386,11 @@ module.exports.tick = async () => {
     // Track has changed
     const trackHasChanged = nowPlaying.uri !== global.nowPlaying.uri;
     if (trackHasChanged) {
-        const next = global.queue[0];
+        const next = nextTrackInQueue();
 
         if (next !== null && next.uri === nowPlaying.uri) {
-            global.queue.shift();
-            fillQueue();
-            updateRealtimePlaylistTrack();
-            module.exports.onQueueChanged();
+            shiftQueue();
+            onQueueChanged();
         }
     }
 
@@ -398,19 +410,20 @@ module.exports.addToQueue = async (uri, ownerID = null) => {
         return false;
     }
 
-    global.queue.push({
+    global.userQueue.push({
         ...track,
         ownerID,
-        hearts: [ownerID]
+        hearts: [],
+        timestamp: Date.now(),
     });
-    reorderQueue();
+
     onQueueChanged();
 
     return true;
 }
 
 module.exports.heartTrack = (uri, clientID) => {
-    const track = global.queue.find(track => track.uri === uri);
+    const track = global.userQueue.find(track => track.uri === uri);
 
     if (track !== undefined) {
         if (track.hearts.indexOf(clientID) === -1) {
@@ -419,18 +432,17 @@ module.exports.heartTrack = (uri, clientID) => {
             track.hearts = track.hearts.filter(id => id != clientID);
         }
     }
-    reorderQueue();
     onQueueChanged();
 }
 
 module.exports.removeTrack = (uri, clientID) => {
-    const trackIndex = global.queue.findIndex(track => track.uri === uri);
+    const trackIndex = global.userQueue.findIndex(track => track.uri === uri);
     if (trackIndex === -1) return;
 
-    const track = global.queue[trackIndex];
+    const track = global.userQueue[trackIndex];
 
     if (track.ownerID === clientID) {
-        global.queue.splice(trackIndex, 1);
+        global.userQueue.splice(trackIndex, 1);
     }
 
     onQueueChanged();
@@ -441,10 +453,11 @@ module.exports.nowPlaying = () => {
 }
 
 module.exports.queue = () => {
-    return global.queue;
+    return global.userQueue;
 }
 
 function onQueueChanged() {
+    reorderQueue();
     updateRealtimePlaylistTrack();
     module.exports.onQueueChanged();
 }

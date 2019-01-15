@@ -14,13 +14,19 @@ export default function SearchResults(props) {
         />
     );
 
+    const cardEnterAnimation = {
+        from: { opacity: 0, transform: "translateX(-10%)"},
+        to: { opacity: 1, transform: "translateX(0%)" }
+    }
+
     return (
         <FlipMove typeName="ul" className="searchResultsCardList"
             duration="100"
             easing="cubic-bezier(0.165, 0.840, 0.440, 1.000)"
-            enterAnimation="fade"
+            enterAnimation={cardEnterAnimation}
             leaveAnimation="fade"
             staggerDelayBy="20"
+            staggerDurationBy="30"
         >
             {resultsCards}
         </FlipMove>

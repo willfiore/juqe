@@ -8,7 +8,10 @@ export default function MainPage(props) {
     return (
         <div className="page mainPage">
             <NowPlayingBar nowPlaying={props.nowPlaying} />
-            <Queue myUserID={props.myUserID} items={props.queue}
+            <Queue
+                users={props.users}
+                myUserID={props.myUserID}
+                items={props.queue}
                 onPressHeartButton={props.onPressHeartButton}
                 onPressRemoveButton={props.onPressRemoveButton}
             />

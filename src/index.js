@@ -12,7 +12,7 @@ const SPOTIFY_TICK_TIMER = 200;
 const registeredUsers = {};
 let nextUserID = 0;
 
-function getUserDetails(client) {
+function getUserFromClient(client) {
     if (client.uuid in registeredUsers) {
         return registeredUsers[client.uuid];
     }
@@ -24,10 +24,17 @@ function isClientRegistered(client) {
 }
 
 function onLoginSuccess(client) {
-    const details = getUserDetails(client);
-    client.send("loginSuccess", details.id);
+    const user = getUserFromClient(client);
+    client.send("loginSuccess", user.id);
     client.send("nowPlayingTrack", Spotify.nowPlaying());
     client.send("queue", Spotify.queue());
+
+    const userMap = {};
+    for (uuid in registeredUsers) {
+        const {id, ...userInfo} = registeredUsers[uuid];
+        userMap[id] = userInfo;
+    }
+    webSocketServer.broadcast("users", userMap);
 }
 
 webSocketServer.onMessage("login", (client, providedUUID) => {
@@ -82,15 +89,15 @@ webSocketServer.onMessage("search", async (client, query) => {
 
 webSocketServer.onMessage("addToQueue", async (client, uri) => {
     if (!isClientRegistered(client)) return;
-    Spotify.addToQueue(uri, getUserDetails(client).id);
+    Spotify.addToQueue(uri, getUserFromClient(client).id);
 });
 
 webSocketServer.onMessage("heart", async (client, uri) => {
-    Spotify.heartTrack(uri, getUserDetails(client).id);
+    Spotify.heartTrack(uri, getUserFromClient(client).id);
 });
 
 webSocketServer.onMessage("remove", async (client, uri) => {
-    Spotify.removeTrack(uri, getUserDetails(client).id);
+    Spotify.removeTrack(uri, getUserFromClient(client).id);
 });
 
 webServer.onAuth = async (code, state) => {

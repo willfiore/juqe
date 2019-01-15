@@ -1,7 +1,7 @@
 {
-  "name": "spotibash",
+  "name": "juqe",
   "version": "1.0.0",
-  "description": "",
+  "description": "A collaborative song voting system for parties, powered by Spotify",
   "private": true,
   "main": "src/index.js",
   "scripts": {

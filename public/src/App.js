@@ -57,6 +57,11 @@ export default class App extends React.Component {
             });
         });
 
+        this.webSocketClient.onMessage("users", (users) => {
+            console.log(users);
+            this.setState({ users });
+        });
+
         this.state = {
             page: "blank",
             nowPlaying: {},
@@ -66,7 +71,8 @@ export default class App extends React.Component {
                 items: []
             },
             loginName: "",
-            myUserID: null
+            myUserID: null,
+            users: {}
         }
 
         this.setPage = this.setPage.bind(this);
@@ -110,6 +116,7 @@ export default class App extends React.Component {
                 onSearchBarClick={this.setPage.bind(null, "search")}
                 nowPlaying={this.state.nowPlaying}
                 queue={this.state.queue}
+                users={this.state.users}
                 myUserID={this.state.myUserID}
                 onPressHeartButton={this.heartTrack}
                 onPressRemoveButton={this.removeTrack}

@@ -13,7 +13,7 @@ export default class SearchResultsCard extends React.Component {
 
     render() {
         return (
-            <li className="songCard"
+            <li className="card searchResultsCard"
             onMouseDown={this.handleClick}>
                 <div className="textGroup">
                     <div className="songTitle">{this.props.name}</div>
