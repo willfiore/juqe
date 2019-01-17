@@ -6,17 +6,14 @@ const request = require("./request-promise");
 const url = require("url");
 const util = require("./utility");
 
-const CLIENT_ID = "52d5d1608065415cb5f6775c6720e1bf";
-const CLIENT_SECRET = "ab1b3af243234d84b4f3bf6571febd04";
-
 const REDIRECT_URI = "http://localhost/auth/";
 const REALTIME_PLAYLIST_NAME = "04bf6f70ee7683db";
 const AUTH_STATE = crypto.randomBytes(16).toString("hex");
 
-const MIN_QUEUE_ITEMS = 12;
-
 const global = {
     authenticated: false,
+    spotifyClientID: "",
+    spotifyClientSecret: "",
     authData: {},
     nowPlaying: {},
     realtimePlaylistID: null,
@@ -72,10 +69,15 @@ async function spotifyApi(uriStem, options) {
     return request(fullOptions);
 }
 
+module.exports.setSpotifyCredentials = (id, secret) => {
+    global.spotifyClientID = id;
+    global.spotifyClientSecret = secret;
+}
+
 module.exports.openAuthenticationWindow = () => {
     let uri = "https://accounts.spotify.com/authorize/";
     uri += "?" + querystring.stringify({
-        client_id: CLIENT_ID,
+        client_id: global.spotifyClientID,
         response_type: "code",
         redirect_uri: REDIRECT_URI,
         state: AUTH_STATE,
@@ -101,8 +103,8 @@ module.exports.authenticate = async (code, state) => {
         uri: "https://accounts.spotify.com/api/token/",
         method: "POST",
         form: {
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
+            client_id: global.spotifyClientID,
+            client_secret: global.spotifyClientSecret,
             grant_type: "authorization_code",
             code: code,
             redirect_uri: REDIRECT_URI,
@@ -131,8 +133,8 @@ async function refreshAccessToken() {
         uri: "https://accounts.spotify.com/api/token/",
         method: "POST",
         form: {
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
+            client_id: global.spotifyClientID,
+            client_secret: global.spotifyClientSecret,
             grant_type: "refresh_token",
             refresh_token: global.authData.refresh_token
         }

@@ -1,0 +1,7 @@
+[spotify]
+clientID = ""
+clientSecret = ""
+
+[network]
+webPort = 80
+webSocketPort = 8080

@@ -2,12 +2,13 @@ const express = require("express");
 const c = require("./colorprint");
 
 module.exports = class WebServer {
-    constructor(port = 80) {
-        const expressApp = express();
+    constructor() {
+
+        this.expressApp = express();
 
         this.onAuth = (code, state) => {};
 
-        expressApp.use("/auth", (req, res, next) => {
+        this.expressApp.use("/auth", (req, res, next) => {
             if (req.path != "/") {
                 next(); return;
             }
@@ -25,13 +26,15 @@ module.exports = class WebServer {
 
         }, express.static("auth/"));
 
-        expressApp.use("/", express.static("public/dist"));
+        this.expressApp.use("/", express.static("public/dist"));
 
         // Failure - do not respond
-        expressApp.use(() => {});
+        this.expressApp.use(() => {});
 
-        // Begin listening
-        expressApp.listen(port, () => c.info(`Web server listening on port ${port}`));
+    }
+
+    start(port) {
+        this.expressApp.listen(port, () => c.info(`Web server listening on port ${port}`));
     }
 }
 

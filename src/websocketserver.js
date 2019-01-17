@@ -6,8 +6,8 @@ module.exports = class WebSocketServer {
         this.messageHandlers = {};
     }
 
-    start() {
-        this.wss = new WebSocket.Server({port: 8080});
+    start(port) {
+        this.wss = new WebSocket.Server({ port });
 
         this.wss.on("connection", (client) => {
 

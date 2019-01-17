@@ -1,11 +1,12 @@
 const c = require("./colorprint");
 const WebSocketServer = require("./WebSocketServer");
 const WebServer = require("./WebServer");
+const Settings = require("./settings");
 const Spotify = require("./spotify");
 const uuidv4 = require("uuid/v4");
 
-const webServer = new WebServer(80);
-const webSocketServer = new WebSocketServer();
+const webServer = new WebServer;
+const webSocketServer = new WebSocketServer;
 
 const SPOTIFY_TICK_TIMER = 200;
 
@@ -101,10 +102,13 @@ webSocketServer.onMessage("remove", async (client, uri) => {
 });
 
 webServer.onAuth = async (code, state) => {
+
+    console.log(code, state);
+
     if (!await Spotify.authenticate(code, state)) return;
     if (!await Spotify.init()) return;
 
-    webSocketServer.start();
+    webSocketServer.start(Settings.settings.network.webSocketPort);
 
     let spotifyTickTimer = setTimeout(async function tick() {
         const tickData = await Spotify.tick();
@@ -130,4 +134,28 @@ Spotify.onQueueChanged = () => {
     webSocketServer.broadcast("queue", Spotify.queue());
 }
 
-Spotify.openAuthenticationWindow();
+async function main() {
+
+    if (!Settings.fileExists()) {
+        c.info("Couldn't find settings file, creating one...");
+        Settings.saveToFile();
+    } else {
+        c.success("Loaded settings from file");
+        Settings.loadFromFile();
+    }
+
+    if (!Settings.settings.spotify.clientID || !Settings.settings.spotify.clientSecret) {
+        c.error("Error: no Spotify Client ID or Secret supplied in settings.toml");
+        return;
+    }
+
+    Spotify.setSpotifyCredentials(
+        Settings.settings.spotify.clientID,
+        Settings.settings.spotify.clientSecret
+    );
+
+    webServer.start(Settings.settings.network.webPort);
+    Spotify.openAuthenticationWindow();
+}
+
+main();
