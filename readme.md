@@ -1,8 +1,6 @@
 # Juqe
 *A collaborative song voting system for parties, powered by Spotify.*
 
----
-
 ## Features
 
 - Allow party guests to queue and vote for music by visiting a web app on their mobile phones
@@ -10,7 +8,8 @@
 - Supports playback from any device (not just the device Juqe is running on)
 - Crossfade support
 
----
+## Screenshots
+![Screenshots](./screenshots/shot1.png)
 
 ## Setup
 1. Clone the repo to a desired installation directory
@@ -42,17 +41,11 @@ If you change `webPort` in **settings.toml**, remember to change the `Redirect U
 1. Begin playing the auto-generated Juqe playlist through Spotify on any device
 1. Direct party guests to the Web server hosted by Juqe where they can search for music to queue up, as well as vote on other people's suggestions
 
----
-
 ## Known issues
 Due to [a bug](https://github.com/spotify/web-api/issues/537) in the Spotify
 Web API, the auto-generated Juqe playlist must be manually played from the
 Spotify app when Juqe is started, otherwise tracks will not be queued.
 
----
-
 ## Todo
 - Wrap executable (with Electron front end?)
 - Time-limit queue and heart requests per user
-
----

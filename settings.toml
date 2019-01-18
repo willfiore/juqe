@@ -1,6 +1,6 @@
 [spotify]
-clientID = ""
-clientSecret = ""
+clientID = "52d5d1608065415cb5f6775c6720e1bf"
+clientSecret = "ab1b3af243234d84b4f3bf6571febd04"
 
 [network]
 webPort = 80
