@@ -9,7 +9,7 @@
 - Crossfade support
 
 ## Screenshots
-![Screenshots](./screenshots/shot1.png)
+![Screenshots](https://raw.githubusercontent.com/willfiore/juqe/master/screenshots/shot1.png)
 
 ## Setup
 1. Clone the repo to a desired installation directory
